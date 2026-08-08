@@ -2,21 +2,29 @@ import { createGoogle } from "@ai-sdk/google";
 
 /**
  * Single source of truth for AI Model Configuration and System Prompt.
- * This module configures the Google Gemini model using @ai-sdk/google
- * and defines FlyBot's persona and system instructions.
+ * Configures the Google Gemini model using @ai-sdk/google.
+ *
+ * To change the model or system prompt, edit the constants below.
+ * This module is intended to be extended in future assignments.
  */
-
-// Ensure the API key is retrieved from process.env.GEMINI_API_KEY.
-// This is executed server-side and never exposed to the client.
-const google = createGoogle({
-  apiKey: process.env.GEMINI_API_KEY,
-});
 
 /**
- * Google Gemini model configuration.
- * Model: "gemini-2.0-flash"
+ * Creates and returns the Gemini model instance.
+ * Evaluates process.env at call time (important for serverless/Vercel
+ * where env vars may not be available at module-load time).
+ *
+ * Falls back to GOOGLE_GENERATIVE_AI_API_KEY if GEMINI_API_KEY is not set
+ * (the @ai-sdk/google default env var name).
  */
-export const model = google("gemini-2.0-flash");
+export function getGeminiModel() {
+  const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY;
+
+  const google = createGoogle({
+    apiKey: apiKey,
+  });
+
+  return google("gemini-2.0-flash");
+}
 
 /**
  * System prompt defining FlyBot's role, capabilities, and personality.

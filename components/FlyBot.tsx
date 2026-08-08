@@ -13,6 +13,7 @@ import {
   Bot,
   User,
   Minimize2,
+  AlertTriangle,
 } from "lucide-react";
 
 /**
@@ -98,7 +99,7 @@ export default function FlyBot({ embedded = false }: FlyBotProps) {
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
 
-  const { messages, sendMessage, stop, status } = useChat();
+  const { messages, sendMessage, stop, status, error } = useChat();
 
   const isStreamingOrSubmitted = status === "submitted" || status === "streaming";
 
@@ -147,6 +148,24 @@ export default function FlyBot({ embedded = false }: FlyBotProps) {
   const isWaitingForFirstToken =
     status === "submitted" ||
     (status === "streaming" && lastMessage?.role === "assistant" && !lastMessageText);
+
+  const isError = status === "error";
+
+  // Derive a user-friendly error message
+  const errorMessage = (() => {
+    if (!isError || !error) return null;
+    const msg = error.message || "";
+    if (msg.includes("quota") || msg.includes("429") || msg.includes("RESOURCE_EXHAUSTED")) {
+      return "FlyBot's API quota has been exceeded. Please wait a minute and try again, or check your Gemini API plan.";
+    }
+    if (msg.includes("API key") || msg.includes("401") || msg.includes("UNAUTHENTICATED")) {
+      return "API key issue — FlyBot can't authenticate with the AI service right now.";
+    }
+    if (msg.includes("404") || msg.includes("NOT_FOUND")) {
+      return "The AI model is currently unavailable. Please try again later.";
+    }
+    return "Something went wrong. Please try sending your message again.";
+  })();
 
   const chatContent = (
     <div className="flex flex-col h-full w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-2xl overflow-hidden font-sans text-zinc-900 dark:text-zinc-100">
@@ -259,12 +278,14 @@ export default function FlyBot({ embedded = false }: FlyBotProps) {
                 }`}
               >
                 {!textContent && !isUser ? (
-                  /* Thinking dots inside assistant bubble if text is empty */
-                  <div className="flex items-center gap-1.5 py-1 px-1">
-                    <span className="w-2 h-2 rounded-full bg-indigo-500 animate-bounce [animation-delay:-0.3s]"></span>
-                    <span className="w-2 h-2 rounded-full bg-indigo-500 animate-bounce [animation-delay:-0.15s]"></span>
-                    <span className="w-2 h-2 rounded-full bg-indigo-500 animate-bounce"></span>
-                  </div>
+                  /* Thinking dots inside assistant bubble if text is empty (only while loading, not on error) */
+                  isStreamingOrSubmitted ? (
+                    <div className="flex items-center gap-1.5 py-1 px-1">
+                      <span className="w-2 h-2 rounded-full bg-indigo-500 animate-bounce [animation-delay:-0.3s]"></span>
+                      <span className="w-2 h-2 rounded-full bg-indigo-500 animate-bounce [animation-delay:-0.15s]"></span>
+                      <span className="w-2 h-2 rounded-full bg-indigo-500 animate-bounce"></span>
+                    </div>
+                  ) : null
                 ) : (
                   <div className="space-y-2">
                     {paragraphs.map((block) => {
@@ -316,6 +337,19 @@ export default function FlyBot({ embedded = false }: FlyBotProps) {
               </div>
             </div>
           )}
+
+        {/* Error Banner */}
+        {isError && errorMessage && (
+          <div className="flex items-start gap-2.5 flex-row">
+            <div className="w-7 h-7 rounded-full bg-rose-600 text-white flex items-center justify-center text-xs font-medium shrink-0 mt-1 shadow-sm">
+              <AlertTriangle className="w-3.5 h-3.5" />
+            </div>
+            <div className="max-w-[82%] sm:max-w-[78%] rounded-2xl rounded-tl-none px-4 py-3 text-sm shadow-sm bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800/60 text-rose-800 dark:text-rose-200">
+              <p className="font-medium text-xs mb-1">⚠️ Error</p>
+              <p className="text-xs leading-relaxed">{errorMessage}</p>
+            </div>
+          </div>
+        )}
 
         <div ref={messagesEndRef} />
       </div>
