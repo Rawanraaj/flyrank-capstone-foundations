@@ -1,5 +1,5 @@
 import { streamText, convertToModelMessages, type UIMessage } from "ai";
-import { getGeminiModel, systemPrompt } from "@/lib/ai/config";
+import { getChatModel, systemPrompt } from "@/lib/ai/config";
 
 /**
  * API Route Handler for FlyBot streaming chat endpoint.
@@ -10,7 +10,7 @@ export async function POST(req: Request) {
 
   try {
     // Runtime API key validation
-    const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY;
+    const apiKey = process.env.GROQ_API_KEY;
     console.log(
       `[FlyBot] API key check — defined: ${Boolean(apiKey)}, length: ${apiKey?.length ?? 0}`
     );
@@ -18,7 +18,7 @@ export async function POST(req: Request) {
     if (!apiKey) {
       console.error("[FlyBot] FATAL: No API key found in environment");
       return new Response(
-        JSON.stringify({ error: "GEMINI_API_KEY is not configured" }),
+        JSON.stringify({ error: "GROQ_API_KEY is not configured" }),
         { status: 500, headers: { "Content-Type": "application/json" } }
       );
     }
@@ -30,7 +30,7 @@ export async function POST(req: Request) {
     const convertedMessages = await convertToModelMessages(messages);
     console.log(`[FlyBot] Converted to ${convertedMessages.length} model messages`);
 
-    const model = getGeminiModel();
+    const model = getChatModel();
 
     const result = streamText({
       model,

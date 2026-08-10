@@ -1,29 +1,26 @@
-import { createGoogle } from "@ai-sdk/google";
+import { createGroq } from "@ai-sdk/groq";
 
 /**
  * Single source of truth for AI Model Configuration and System Prompt.
- * Configures the Google Gemini model using @ai-sdk/google.
+ * Configures the Groq model using @ai-sdk/groq.
  *
  * To change the model or system prompt, edit the constants below.
  * This module is intended to be extended in future assignments.
  */
 
 /**
- * Creates and returns the Gemini model instance.
+ * Creates and returns the Groq chat model instance.
  * Evaluates process.env at call time (important for serverless/Vercel
  * where env vars may not be available at module-load time).
- *
- * Falls back to GOOGLE_GENERATIVE_AI_API_KEY if GEMINI_API_KEY is not set
- * (the @ai-sdk/google default env var name).
  */
-export function getGeminiModel() {
-  const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY;
+export function getChatModel() {
+  const apiKey = process.env.GROQ_API_KEY;
 
-  const google = createGoogle({
+  const groq = createGroq({
     apiKey: apiKey,
   });
 
-  return google("gemini-2.0-flash");
+  return groq("openai/gpt-oss-120b");
 }
 
 /**

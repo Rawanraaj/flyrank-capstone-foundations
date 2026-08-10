@@ -156,7 +156,7 @@ export default function FlyBot({ embedded = false }: FlyBotProps) {
     if (!isError || !error) return null;
     const msg = error.message || "";
     if (msg.includes("quota") || msg.includes("429") || msg.includes("RESOURCE_EXHAUSTED")) {
-      return "FlyBot's API quota has been exceeded. Please wait a minute and try again, or check your Gemini API plan.";
+      return "FlyBot's API quota has been exceeded. Please wait a minute and try again, or check your Groq API plan.";
     }
     if (msg.includes("API key") || msg.includes("401") || msg.includes("UNAUTHENTICATED")) {
       return "API key issue — FlyBot can't authenticate with the AI service right now.";
