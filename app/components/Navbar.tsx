@@ -8,7 +8,6 @@ const navLinks = [
   { href: "/", label: "Home" },
   { href: "/products", label: "Products" },
   { href: "/cart", label: "Cart" },
-  { href: "/chat", label: "FlyBot Chat" },
   { href: "/settings", label: "Settings" },
   { href: "/login", label: "Login" },
 ];
