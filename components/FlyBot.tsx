@@ -14,7 +14,30 @@ import {
   User,
   Minimize2,
   AlertTriangle,
+  Search,
+  Package,
+  Calculator,
+  Loader2,
+  CheckCircle2,
+  Clock,
+  Truck,
+  AlertCircle,
+  ShoppingBag,
+  Tag,
+  DollarSign,
 } from "lucide-react";
+
+/**
+ * Interface for ToolInvocation from AI SDK
+ */
+interface ToolInvocation {
+  toolCallId: string;
+  toolName: string;
+  args: Record<string, any>;
+  state: "partial-call" | "call" | "result";
+  result?: any;
+  isError?: boolean;
+}
 
 /**
  * Extracts plain text content safely from a UIMessage object.
@@ -22,9 +45,7 @@ import {
 function getMessageText(message: UIMessage): string {
   if (Array.isArray(message.parts)) {
     return message.parts
-      .filter(
-        (part): part is { type: "text"; text: string } => part.type === "text"
-      )
+      .filter((part): part is { type: "text"; text: string } => part.type === "text")
       .map((part) => part.text)
       .join("");
   }
@@ -32,19 +53,16 @@ function getMessageText(message: UIMessage): string {
 }
 
 /**
- * Safely prepares streamed text for rendering to avoid dangling code fences
- * or broken markdown structures from visually breaking mid-stream.
+ * Safely prepares streamed text for rendering to avoid dangling code fences.
  */
 function formatSafeText(rawText: string): {
   paragraphs: Array<{ id: string; content: string; isCode: boolean; language?: string }>;
 } {
   if (!rawText) return { paragraphs: [] };
 
-  // Handle unclosed code fences safely
   let processed = rawText;
   const fenceMatches = processed.match(/```/g);
   if (fenceMatches && fenceMatches.length % 2 !== 0) {
-    // Append a temporary closing fence so code blocks render safely mid-stream
     processed += "\n```";
   }
 
@@ -86,8 +104,377 @@ function formatSafeText(rawText: string): {
   return { paragraphs: result };
 }
 
+/**
+ * Friendly label for tool names
+ */
+function getToolFriendlyName(toolName: string): string {
+  switch (toolName) {
+    case "searchProducts":
+      return "Search Products";
+    case "checkOrderStatus":
+      return "Check Order Status";
+    case "calculatePrice":
+      return "Calculate Price";
+    default:
+      return toolName;
+  }
+}
+
+/**
+ * Render Tool Invocation with 4 Lifecycle States:
+ * 1. input-streaming: Muted compact inline indicator with partial args
+ * 2. input-available: Active pulsing card with spinner and tool action label
+ * 3. output-available: Rich visual component for searchProducts, checkOrderStatus, calculatePrice
+ * 4. output-error: Red error card with icon, message, and human suggestion
+ */
+function ToolPartRenderer({ toolInvocation }: { toolInvocation: ToolInvocation }) {
+  const { toolName, args, state, result, isError } = toolInvocation;
+
+  // Determine state
+  const isStreamingInput = state === "partial-call";
+  const isInputAvailable = state === "call";
+
+  // Check if result is error (thrown from execute or has isError property)
+  const isOutputError =
+    state === "result" &&
+    (Boolean(isError) ||
+      (result && typeof result === "object" && result.isError) ||
+      (result instanceof Error) ||
+      (typeof result === "string" && result.toLowerCase().includes("error")));
+
+  const isOutputAvailable = state === "result" && !isOutputError;
+
+  // 1. STATE: input-streaming
+  if (isStreamingInput) {
+    const partialParamStr = args
+      ? Object.entries(args)
+          .map(([k, v]) => `${k}: "${v}"`)
+          .join(", ")
+      : "";
+
+    return (
+      <div className="my-2 py-1.5 px-3 rounded-lg bg-zinc-100/70 dark:bg-zinc-800/40 text-zinc-500 dark:text-zinc-400 text-xs font-mono flex items-center gap-2 border border-dashed border-zinc-300/60 dark:border-zinc-700/60 transition-all duration-200">
+        <Loader2 className="w-3.5 h-3.5 animate-spin text-zinc-400 shrink-0" />
+        <span className="font-semibold">{getToolFriendlyName(toolName)}:</span>
+        <span className="truncate max-w-[220px]">
+          {partialParamStr || "streaming parameters..."}
+        </span>
+      </div>
+    );
+  }
+
+  // 2. STATE: input-available (loading state while tool executes)
+  if (isInputAvailable) {
+    const loadingText = (() => {
+      if (toolName === "searchProducts") return `Searching FlyStore for "${args.query || "products"}"...`;
+      if (toolName === "checkOrderStatus") return `Checking status for order ${args.orderId || ""}...`;
+      if (toolName === "calculatePrice") return `Calculating price estimate for ${args.productName || "item"}...`;
+      return `Executing ${toolName}...`;
+    })();
+
+    return (
+      <div className="my-2.5 p-3 rounded-xl bg-indigo-50/60 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-800/80 text-indigo-900 dark:text-indigo-200 text-xs flex items-center gap-3 shadow-sm animate-pulse transition-all duration-200">
+        <div className="w-7 h-7 rounded-lg bg-indigo-600 text-white flex items-center justify-center shrink-0">
+          <Loader2 className="w-4 h-4 animate-spin" />
+        </div>
+        <div>
+          <p className="font-semibold text-xs text-indigo-950 dark:text-indigo-100">
+            {getToolFriendlyName(toolName)}
+          </p>
+          <p className="text-[11px] text-indigo-700/90 dark:text-indigo-300/90 mt-0.5">
+            {loadingText}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // 4. STATE: output-error
+  if (isOutputError) {
+    const rawErrorMessage = (() => {
+      if (typeof result === "string") return result;
+      if (result && typeof result === "object") {
+        return result.message || result.error || "Execution failed";
+      }
+      return "Tool execution encountered an error";
+    })();
+
+    const suggestion = (() => {
+      if (toolName === "calculatePrice") {
+        return "Try checking the product name spelling (e.g. 'FlyPods Pro', 'FlyWatch Ultra', 'FlyBook Laptop 15').";
+      }
+      if (toolName === "checkOrderStatus") {
+        return "Please verify your order ID format (e.g. ORD-1001, ORD-1002).";
+      }
+      return "Please check your search keywords and try again.";
+    })();
+
+    return (
+      <div className="my-2.5 p-3.5 rounded-xl bg-rose-50/90 dark:bg-rose-950/40 border border-rose-300 dark:border-rose-800/80 text-rose-900 dark:text-rose-100 shadow-sm transition-all duration-200 ease-in-out">
+        <div className="flex items-start gap-2.5">
+          <div className="w-6 h-6 rounded-full bg-rose-200 dark:bg-rose-900/60 text-rose-700 dark:text-rose-300 flex items-center justify-center shrink-0 mt-0.5">
+            <AlertCircle className="w-4 h-4" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2">
+              <span className="font-bold text-xs text-rose-900 dark:text-rose-200">
+                {getToolFriendlyName(toolName)} Failed
+              </span>
+              <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-rose-200/70 text-rose-800 dark:bg-rose-900/80 dark:text-rose-200">
+                Error
+              </span>
+            </div>
+            <p className="text-xs font-medium text-rose-800 dark:text-rose-300 mt-1">
+              {rawErrorMessage}
+            </p>
+            <p className="text-[11px] text-rose-700/80 dark:text-rose-400 mt-1 italic">
+              💡 {suggestion}
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // 3. STATE: output-available (successful rich component rendering)
+  if (isOutputAvailable && result) {
+    return (
+      <div className="my-3 transition-all duration-200 ease-in-out">
+        {toolName === "searchProducts" && <SearchProductsOutput result={result} />}
+        {toolName === "checkOrderStatus" && <CheckOrderStatusOutput result={result} />}
+        {toolName === "calculatePrice" && <CalculatePriceOutput result={result} />}
+      </div>
+    );
+  }
+
+  return null;
+}
+
+/**
+ * Output Available: searchProducts
+ */
+function SearchProductsOutput({ result }: { result: any }) {
+  const products: Array<{
+    id: string;
+    name: string;
+    category: string;
+    price: number;
+    imageUrl?: string;
+  }> = result.products || [];
+
+  if (products.length === 0) {
+    return (
+      <div className="p-3.5 rounded-xl bg-zinc-100 dark:bg-zinc-800/80 border border-zinc-200 dark:border-zinc-700 text-xs text-zinc-600 dark:text-zinc-300 flex items-center gap-2.5">
+        <Search className="w-4 h-4 text-zinc-400" />
+        <span>No products matching your search criteria were found in FlyStore.</span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-xl border border-zinc-200/90 dark:border-zinc-700/90 bg-white dark:bg-zinc-900 p-3 shadow-sm space-y-2.5">
+      <div className="flex items-center justify-between border-b border-zinc-100 dark:border-zinc-800 pb-2">
+        <div className="flex items-center gap-2">
+          <Search className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+          <span className="font-semibold text-xs text-zinc-900 dark:text-zinc-100">
+            Product Search Results ({result.totalFound || products.length})
+          </span>
+        </div>
+        {result.maxPrice && (
+          <span className="text-[10px] px-2 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-300 font-medium">
+            Max: ${result.maxPrice}
+          </span>
+        )}
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+        {products.map((p) => (
+          <div
+            key={p.id}
+            className="p-2.5 rounded-lg border border-zinc-200/70 dark:border-zinc-800 bg-zinc-50/60 dark:bg-zinc-800/50 flex items-center gap-3 hover:border-indigo-300 dark:hover:border-indigo-700 transition-colors"
+          >
+            <div className="w-10 h-10 rounded-lg bg-indigo-100 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0 font-bold text-xs shadow-inner">
+              <ShoppingBag className="w-5 h-5" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <h4 className="font-semibold text-xs text-zinc-900 dark:text-zinc-100 truncate">
+                {p.name}
+              </h4>
+              <div className="flex items-center justify-between mt-1">
+                <span className="text-[10px] px-1.5 py-0.2 rounded bg-zinc-200/70 dark:bg-zinc-700 text-zinc-700 dark:text-zinc-300">
+                  {p.category}
+                </span>
+                <span className="font-bold text-xs text-indigo-600 dark:text-indigo-400">
+                  ${p.price.toFixed(2)}
+                </span>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Output Available: checkOrderStatus
+ */
+function CheckOrderStatusOutput({ result }: { result: any }) {
+  if (!result.found) {
+    return (
+      <div className="p-3.5 rounded-xl bg-amber-50/80 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 text-amber-900 dark:text-amber-200 text-xs shadow-sm flex items-start gap-2.5">
+        <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+        <div>
+          <p className="font-semibold text-xs">Order Not Found</p>
+          <p className="text-[11px] text-amber-800/90 dark:text-amber-300 mt-0.5">
+            {result.message || `No order matching ID "${result.orderId}" was located.`}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  const order = result.order;
+  const status = order.status;
+
+  const statusBadge = (() => {
+    switch (status) {
+      case "delivered":
+        return {
+          label: "Delivered",
+          className: "bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-950 dark:text-emerald-300 dark:border-emerald-800",
+          icon: <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />,
+        };
+      case "shipped":
+        return {
+          label: "Shipped",
+          className: "bg-blue-100 text-blue-800 border-blue-300 dark:bg-blue-950 dark:text-blue-300 dark:border-blue-800",
+          icon: <Truck className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />,
+        };
+      case "processing":
+      default:
+        return {
+          label: "Processing",
+          className: "bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-950 dark:text-amber-300 dark:border-amber-800",
+          icon: <Clock className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />,
+        };
+    }
+  })();
+
+  return (
+    <div className="rounded-xl border border-zinc-200/90 dark:border-zinc-700/90 bg-white dark:bg-zinc-900 p-3.5 shadow-sm space-y-3">
+      <div className="flex items-center justify-between border-b border-zinc-100 dark:border-zinc-800 pb-2.5">
+        <div className="flex items-center gap-2">
+          <Package className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+          <span className="font-bold text-xs text-zinc-900 dark:text-zinc-100">
+            Order Status ({order.orderId})
+          </span>
+        </div>
+        <span
+          className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold border ${statusBadge.className}`}
+        >
+          {statusBadge.icon}
+          {statusBadge.label}
+        </span>
+      </div>
+
+      <div className="grid grid-cols-2 gap-2 text-xs">
+        <div className="p-2 rounded-lg bg-zinc-50 dark:bg-zinc-800/60 border border-zinc-100 dark:border-zinc-800">
+          <span className="text-[10px] text-zinc-400 block font-medium">Est. Delivery</span>
+          <span className="font-semibold text-zinc-800 dark:text-zinc-200">
+            {order.estimatedDelivery}
+          </span>
+        </div>
+        <div className="p-2 rounded-lg bg-zinc-50 dark:bg-zinc-800/60 border border-zinc-100 dark:border-zinc-800">
+          <span className="text-[10px] text-zinc-400 block font-medium">Order Total</span>
+          <span className="font-semibold text-indigo-600 dark:text-indigo-400">
+            ${order.total.toFixed(2)}
+          </span>
+        </div>
+      </div>
+
+      <div className="pt-1">
+        <span className="text-[11px] font-semibold text-zinc-500 dark:text-zinc-400 block mb-1">
+          Items in Order:
+        </span>
+        <ul className="space-y-1">
+          {order.items.map((item: string, i: number) => (
+            <li
+              key={i}
+              className="text-xs text-zinc-700 dark:text-zinc-300 flex items-center gap-1.5"
+            >
+              <span className="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
+              {item}
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Output Available: calculatePrice
+ */
+function CalculatePriceOutput({ result }: { result: any }) {
+  return (
+    <div className="rounded-xl border border-zinc-200/90 dark:border-zinc-700/90 bg-white dark:bg-zinc-900 p-3.5 shadow-sm space-y-3">
+      <div className="flex items-center justify-between border-b border-zinc-100 dark:border-zinc-800 pb-2.5">
+        <div className="flex items-center gap-2">
+          <Calculator className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+          <span className="font-bold text-xs text-zinc-900 dark:text-zinc-100">
+            Price Estimate Breakdown
+          </span>
+        </div>
+        <span className="text-[10px] px-2 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 font-semibold">
+          {result.quantity}x {result.productName}
+        </span>
+      </div>
+
+      {/* Itemized Table */}
+      <table className="w-full text-xs">
+        <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
+          <tr>
+            <td className="py-1.5 text-zinc-500 dark:text-zinc-400">Unit Price</td>
+            <td className="py-1.5 text-right font-medium text-zinc-800 dark:text-zinc-200">
+              ${result.unitPrice.toFixed(2)}
+            </td>
+          </tr>
+          <tr>
+            <td className="py-1.5 text-zinc-500 dark:text-zinc-400">
+              Subtotal ({result.quantity} unit{result.quantity > 1 ? "s" : ""})
+            </td>
+            <td className="py-1.5 text-right font-medium text-zinc-800 dark:text-zinc-200">
+              ${result.subtotal.toFixed(2)}
+            </td>
+          </tr>
+          <tr>
+            <td className="py-1.5 text-zinc-500 dark:text-zinc-400">
+              Shipping ({result.shippingSpeed} speed)
+            </td>
+            <td className="py-1.5 text-right font-medium text-zinc-800 dark:text-zinc-200">
+              ${result.shipping.toFixed(2)}
+            </td>
+          </tr>
+          <tr>
+            <td className="py-1.5 text-zinc-500 dark:text-zinc-400">Estimated Tax (8%)</td>
+            <td className="py-1.5 text-right font-medium text-zinc-800 dark:text-zinc-200">
+              ${result.tax.toFixed(2)}
+            </td>
+          </tr>
+          <tr className="border-t-2 border-zinc-200 dark:border-zinc-700 font-bold">
+            <td className="pt-2 text-zinc-900 dark:text-zinc-100 text-sm">Estimated Total</td>
+            <td className="pt-2 text-right text-indigo-600 dark:text-indigo-400 text-sm">
+              ${result.total.toFixed(2)}
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 interface FlyBotProps {
-  /** If true, renders embedded inline instead of a floating chat widget. Defaults to false. */
   embedded?: boolean;
 }
 
@@ -103,12 +490,10 @@ export default function FlyBot({ embedded = false }: FlyBotProps) {
 
   const isStreamingOrSubmitted = status === "submitted" || status === "streaming";
 
-  // Check scroll position to determine if auto-scroll should activate
   const handleScroll = useCallback(() => {
     if (!scrollContainerRef.current) return;
     const { scrollTop, scrollHeight, clientHeight } = scrollContainerRef.current;
     const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
-    // Consider "near bottom" if within 75px
     setIsScrolledUp(distanceFromBottom > 75);
   }, []);
 
@@ -120,7 +505,6 @@ export default function FlyBot({ embedded = false }: FlyBotProps) {
     }
   }, []);
 
-  // Auto-scroll logic: only scroll if the user hasn't manually scrolled up
   useEffect(() => {
     if (!isScrolledUp) {
       scrollToBottom(true);
@@ -141,28 +525,22 @@ export default function FlyBot({ embedded = false }: FlyBotProps) {
     stop();
   };
 
-  // Determine if we need to show the thinking indicator
-  // (when submitted or streaming before any content has arrived)
   const lastMessage = messages[messages.length - 1];
   const lastMessageText = lastMessage ? getMessageText(lastMessage) : "";
   const isWaitingForFirstToken =
     status === "submitted" ||
-    (status === "streaming" && lastMessage?.role === "assistant" && !lastMessageText);
+    (status === "streaming" && lastMessage?.role === "assistant" && !lastMessageText && (!lastMessage.parts || lastMessage.parts.length === 0));
 
   const isError = status === "error";
 
-  // Derive a user-friendly error message
   const errorMessage = (() => {
     if (!isError || !error) return null;
     const msg = error.message || "";
     if (msg.includes("quota") || msg.includes("429") || msg.includes("RESOURCE_EXHAUSTED")) {
-      return "FlyBot's API quota has been exceeded. Please wait a minute and try again, or check your Groq API plan.";
+      return "FlyBot's API quota has been exceeded. Please wait a minute and try again.";
     }
-    if (msg.includes("API key") || msg.includes("401") || msg.includes("UNAUTHENTICATED")) {
+    if (msg.includes("API key") || msg.includes("401")) {
       return "API key issue — FlyBot can't authenticate with the AI service right now.";
-    }
-    if (msg.includes("404") || msg.includes("NOT_FOUND")) {
-      return "The AI model is currently unavailable. Please try again later.";
     }
     return "Something went wrong. Please try sending your message again.";
   })();
@@ -217,14 +595,14 @@ export default function FlyBot({ embedded = false }: FlyBotProps) {
               Hi there! I&apos;m FlyBot 👋
             </h3>
             <p className="text-xs text-zinc-500 dark:text-zinc-400 max-w-xs leading-relaxed">
-              Ask me anything about FlyStore products, shipping, returns, or get personalized recommendations!
+              I can search products, check order status, or calculate full price breakdowns for you!
             </p>
 
-            <div className="flex flex-wrap gap-2 justify-center pt-2">
+            <div className="flex flex-wrap gap-1.5 justify-center pt-2 max-w-xs">
               {[
-                "Who are you?",
-                "What products do you offer?",
-                "Do you offer warranty?",
+                "Search audio products under $100",
+                "Status of order ORD-1002",
+                "Calculate price for 2 FlyPods Pro",
               ].map((suggestion) => (
                 <button
                   key={suggestion}
@@ -232,7 +610,7 @@ export default function FlyBot({ embedded = false }: FlyBotProps) {
                     sendMessage({ text: suggestion });
                     setIsScrolledUp(false);
                   }}
-                  className="text-xs px-3 py-1.5 rounded-full bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-zinc-700/80 transition-colors shadow-sm"
+                  className="text-xs px-3 py-1.5 rounded-full bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-zinc-700/80 transition-colors shadow-sm text-left"
                 >
                   {suggestion}
                 </button>
@@ -246,6 +624,18 @@ export default function FlyBot({ embedded = false }: FlyBotProps) {
           const isUser = message.role === "user";
           const textContent = getMessageText(message);
           const { paragraphs } = formatSafeText(textContent);
+
+          // Extract tool invocation parts from message.parts
+          const toolInvocations: ToolInvocation[] = [];
+          if (Array.isArray(message.parts)) {
+            message.parts.forEach((part: any) => {
+              if (part.type === "tool-invocation" && part.toolInvocation) {
+                toolInvocations.push(part.toolInvocation);
+              } else if (part.toolInvocation) {
+                toolInvocations.push(part.toolInvocation);
+              }
+            });
+          }
 
           return (
             <div
@@ -271,22 +661,19 @@ export default function FlyBot({ embedded = false }: FlyBotProps) {
 
               {/* Message Bubble */}
               <div
-                className={`max-w-[82%] sm:max-w-[78%] rounded-2xl px-4 py-3 text-sm shadow-sm leading-relaxed ${
+                className={`max-w-[85%] sm:max-w-[80%] rounded-2xl px-4 py-3 text-sm shadow-sm leading-relaxed ${
                   isUser
                     ? "bg-indigo-600 text-white rounded-tr-none"
                     : "bg-white dark:bg-zinc-800 border border-zinc-200/80 dark:border-zinc-700/80 text-zinc-800 dark:text-zinc-100 rounded-tl-none"
                 }`}
               >
-                {!textContent && !isUser ? (
-                  /* Thinking dots inside assistant bubble if text is empty (only while loading, not on error) */
-                  isStreamingOrSubmitted ? (
-                    <div className="flex items-center gap-1.5 py-1 px-1">
-                      <span className="w-2 h-2 rounded-full bg-indigo-500 animate-bounce [animation-delay:-0.3s]"></span>
-                      <span className="w-2 h-2 rounded-full bg-indigo-500 animate-bounce [animation-delay:-0.15s]"></span>
-                      <span className="w-2 h-2 rounded-full bg-indigo-500 animate-bounce"></span>
-                    </div>
-                  ) : null
-                ) : (
+                {/* Render Tool Invocations */}
+                {toolInvocations.map((ti) => (
+                  <ToolPartRenderer key={ti.toolCallId} toolInvocation={ti} />
+                ))}
+
+                {/* Text Content */}
+                {paragraphs.length > 0 && (
                   <div className="space-y-2">
                     {paragraphs.map((block) => {
                       if (block.isCode) {
@@ -313,12 +700,21 @@ export default function FlyBot({ embedded = false }: FlyBotProps) {
                     })}
                   </div>
                 )}
+
+                {/* Loading indicator if message is empty and streaming */}
+                {!textContent && toolInvocations.length === 0 && !isUser && isStreamingOrSubmitted && (
+                  <div className="flex items-center gap-1.5 py-1 px-1">
+                    <span className="w-2 h-2 rounded-full bg-indigo-500 animate-bounce [animation-delay:-0.3s]"></span>
+                    <span className="w-2 h-2 rounded-full bg-indigo-500 animate-bounce [animation-delay:-0.15s]"></span>
+                    <span className="w-2 h-2 rounded-full bg-indigo-500 animate-bounce"></span>
+                  </div>
+                )}
               </div>
             </div>
           );
         })}
 
-        {/* Thinking Indicator when submitted before first assistant message arrives */}
+        {/* Thinking Indicator */}
         {isWaitingForFirstToken &&
           (!lastMessage || lastMessage.role === "user") && (
             <div className="flex items-start gap-2.5 flex-row">
@@ -331,14 +727,14 @@ export default function FlyBot({ embedded = false }: FlyBotProps) {
                   <span className="w-2 h-2 rounded-full bg-indigo-500 animate-bounce [animation-delay:-0.15s]"></span>
                   <span className="w-2 h-2 rounded-full bg-indigo-500 animate-bounce"></span>
                   <span className="text-xs text-zinc-400 dark:text-zinc-500 ml-1.5 font-medium">
-                    FlyBot is thinking...
+                    FlyBot is processing...
                   </span>
                 </div>
               </div>
             </div>
           )}
 
-        {/* Error Banner */}
+        {/* Global Error Banner */}
         {isError && errorMessage && (
           <div className="flex items-start gap-2.5 flex-row">
             <div className="w-7 h-7 rounded-full bg-rose-600 text-white flex items-center justify-center text-xs font-medium shrink-0 mt-1 shadow-sm">
@@ -354,7 +750,7 @@ export default function FlyBot({ embedded = false }: FlyBotProps) {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Floating "Jump to latest" pill */}
+      {/* Floating Jump to Latest Button */}
       {isScrolledUp && (
         <div className="absolute bottom-20 left-1/2 -translate-x-1/2 z-10">
           <button
@@ -377,7 +773,7 @@ export default function FlyBot({ embedded = false }: FlyBotProps) {
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="Ask FlyBot something..."
+            placeholder="Ask FlyBot to search, check orders, or calculate total..."
             className="flex-1 px-3.5 py-2.5 text-sm rounded-xl bg-zinc-100 dark:bg-zinc-800/90 border border-zinc-200 dark:border-zinc-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 dark:placeholder-zinc-500"
           />
 
@@ -412,14 +808,12 @@ export default function FlyBot({ embedded = false }: FlyBotProps) {
 
   return (
     <div className="fixed bottom-5 right-5 z-50 flex flex-col items-end">
-      {/* Expanded Widget Window */}
       {isOpen && (
-        <div className="w-[375px] max-w-[calc(100vw-2.5rem)] h-[520px] max-h-[calc(100vh-6rem)] mb-3 transition-all duration-200 ease-in-out animate-in fade-in slide-in-from-bottom-4">
+        <div className="w-[400px] max-w-[calc(100vw-2.5rem)] h-[540px] max-h-[calc(100vh-6rem)] mb-3 transition-all duration-200 ease-in-out animate-in fade-in slide-in-from-bottom-4">
           {chatContent}
         </div>
       )}
 
-      {/* Floating Toggle Button */}
       <button
         onClick={() => setIsOpen((prev) => !prev)}
         aria-label={isOpen ? "Close FlyBot chat" : "Open FlyBot chat"}

@@ -1,36 +1,123 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# FlyStore & FlyBot AI Assistant
+
+This is a [Next.js](https://nextjs.org) e-commerce application integrated with **FlyBot**—an AI shopping assistant built using Vercel AI SDK and Groq.
+
+## Tool Contracts
+
+FlyBot is equipped with three server-side AI tools defined in `app/api/chat/route.ts` using the AI SDK's `tool` helper and `zod` schema validation.
+
+---
+
+### 1. `searchProducts`
+Searches the FlyStore product catalog by keyword/category with an optional maximum price threshold.
+
+* **Zod Schema:**
+  ```ts
+  z.object({
+    query: z.string().describe("search term for product name or category"),
+    maxPrice: z.number().optional().describe("maximum price filter in USD"),
+  })
+  ```
+
+* **Return Value Shape:**
+  ```json
+  {
+    "query": "audio",
+    "maxPrice": 100,
+    "totalFound": 2,
+    "products": [
+      {
+        "id": "prod-4",
+        "name": "FlySound Bluetooth Speaker",
+        "category": "Audio",
+        "price": 79.99,
+        "imageUrl": "/placeholders/speaker.jpg"
+      }
+    ]
+  }
+  ```
+
+---
+
+### 2. `checkOrderStatus`
+Looks up order details and delivery status by order ID.
+
+* **Zod Schema:**
+  ```ts
+  z.object({
+    orderId: z.string().describe("the order ID to look up"),
+  })
+  ```
+
+* **Return Value Shape (Found):**
+  ```json
+  {
+    "found": true,
+    "order": {
+      "orderId": "ORD-1002",
+      "status": "shipped",
+      "estimatedDelivery": "2026-09-02",
+      "items": ["FlyWatch Ultra"],
+      "total": 299.99
+    }
+  }
+  ```
+
+* **Return Value Shape (Not Found):**
+  ```json
+  {
+    "found": false,
+    "orderId": "ORD-9999",
+    "message": "Order \"ORD-9999\" was not found in our database."
+  }
+  ```
+
+---
+
+### 3. `calculatePrice`
+Calculates an itemized total including unit price, subtotal, shipping fees ($5 standard / $15 express), and 8% estimated tax.
+
+* **Zod Schema:**
+  ```ts
+  z.object({
+    productName: z.string(),
+    quantity: z.number().min(1),
+    shippingSpeed: z.enum(["standard", "express"]).default("standard"),
+  })
+  ```
+
+* **Return Value Shape (Success):**
+  ```json
+  {
+    "success": true,
+    "productName": "FlyPods Pro",
+    "unitPrice": 149.99,
+    "quantity": 2,
+    "shippingSpeed": "express",
+    "subtotal": 299.98,
+    "shipping": 15,
+    "tax": 24,
+    "total": 338.98
+  }
+  ```
+
+* **Return Value Shape (Failure / Output Error):**
+  ```ts
+  Throws Error("Product not found in catalog")
+  ```
+
+---
 
 ## Getting Started
 
-First, run the development server:
+Run the development server:
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Run build check:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```bash
+npm run build
+```
