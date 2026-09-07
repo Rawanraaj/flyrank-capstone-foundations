@@ -60,11 +60,12 @@ export async function POST(req: Request) {
       system: `${systemPrompt}
 
 You have access to interactive store tools:
-1. 'searchProducts': Use whenever the user asks to search, find, or browse products or items by keyword/category/price.
-2. 'checkOrderStatus': Use whenever the user asks about an order status, tracking, or order ID.
-3. 'calculatePrice': Use whenever the user asks to calculate the price, estimate total, or get a receipt for a product quantity and shipping speed.
+1. 'searchProducts': Use whenever the user asks to search, find, or browse products or items by keyword/category/price. Always call this tool even for vague or unfamiliar queries.
+2. 'checkOrderStatus': Use whenever the user asks about an order status, tracking, or order ID. Always call this tool for any order lookup, regardless of order ID format.
+3. 'calculatePrice': MUST ALWAYS be called whenever the user asks to calculate the price, estimate total, or get a receipt for any product and quantity.
+   CRITICAL MANDATORY RULE: NEVER answer a price calculation question with conversational plain text or reasoning. NEVER try to determine whether a product exists before calling 'calculatePrice'. Even if the product name sounds unfamiliar, made up, or non-existent (e.g., "NonExistentWidget"), you MUST execute the 'calculatePrice' tool with that exact product name so the store system can process it.
 
-Always prefer calling the appropriate tool when asked about products, orders, or price calculations.`,
+Always execute the appropriate tool rather than answering from your own reasoning. Do not decline, preempt, or guess catalog contents without calling the tool first.`,
       messages: convertedMessages,
       tools: {
         searchProducts: tool({
@@ -124,11 +125,11 @@ Always prefer calling the appropriate tool when asked about products, orders, or
         }),
 
         calculatePrice: tool({
-          description: "Calculate full price breakdown including subtotal, shipping, tax, and total for a product.",
+          description: "Calculate full price breakdown including subtotal, shipping, tax, and total for a product. MANDATORY: You MUST execute this tool whenever asked to calculate or estimate a price for any product, even if the product name seems unfamiliar, fictional, or non-existent (such as 'NonExistentWidget'). Do not answer from memory or skip this tool.",
           inputSchema: zodSchema(
             z.object({
-              productName: z.string(),
-              quantity: z.number().min(1),
+              productName: z.string().describe("the product name to calculate price for"),
+              quantity: z.number().min(1).describe("quantity of items to calculate price for"),
               shippingSpeed: z
                 .enum(["standard", "express"])
                 .default("standard")
@@ -140,7 +141,7 @@ Always prefer calling the appropriate tool when asked about products, orders, or
             quantity,
             shippingSpeed,
           }) => {
-            console.log(`[Tool: calculatePrice] productName="${productName}", qty=${quantity}, speed=${shippingSpeed}`);
+            console.log("calculatePrice TOOL WAS CALLED with:", { productName, quantity, shippingSpeed });
             const q = productName.toLowerCase();
             const product = PRODUCTS_CATALOG.find((p) => p.name.toLowerCase().includes(q));
 
