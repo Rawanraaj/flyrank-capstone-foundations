@@ -25,6 +25,7 @@ import {
   ShoppingBag,
   Tag,
   DollarSign,
+  RefreshCw,
 } from "lucide-react";
 
 /**
@@ -121,13 +122,130 @@ function getToolFriendlyName(toolName: string): string {
 }
 
 /**
+ * Skeleton Loading Placeholder for searchProducts
+ */
+function SearchProductsSkeleton({ input }: { input?: Record<string, any> }) {
+  return (
+    <div className="rounded-xl border border-zinc-200/90 dark:border-zinc-700/90 bg-white dark:bg-zinc-900 p-3 shadow-sm space-y-2.5 animate-pulse">
+      <div className="flex items-center justify-between border-b border-zinc-100 dark:border-zinc-800 pb-2">
+        <div className="flex items-center gap-2">
+          <div className="w-4 h-4 rounded bg-indigo-200 dark:bg-indigo-900/60" />
+          <div className="h-3.5 w-36 bg-zinc-200 dark:bg-zinc-700 rounded" />
+        </div>
+        {input?.maxPrice && (
+          <div className="h-4 w-16 bg-indigo-100 dark:bg-indigo-950 rounded-full" />
+        )}
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+        {[1, 2].map((i) => (
+          <div
+            key={i}
+            className="p-2.5 rounded-lg border border-zinc-200/60 dark:border-zinc-800 bg-zinc-50/60 dark:bg-zinc-800/40 flex items-center gap-3"
+          >
+            <div className="w-10 h-10 rounded-lg bg-zinc-200 dark:bg-zinc-700 shrink-0" />
+            <div className="flex-1 min-w-0 space-y-2">
+              <div className="h-3.5 w-3/4 bg-zinc-200 dark:bg-zinc-700 rounded" />
+              <div className="flex items-center justify-between">
+                <div className="h-3 w-12 bg-zinc-200 dark:bg-zinc-700 rounded" />
+                <div className="h-3.5 w-10 bg-zinc-200 dark:bg-zinc-700 rounded" />
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Skeleton Loading Placeholder for checkOrderStatus
+ */
+function CheckOrderStatusSkeleton() {
+  return (
+    <div className="rounded-xl border border-zinc-200/90 dark:border-zinc-700/90 bg-white dark:bg-zinc-900 p-3.5 shadow-sm space-y-3 animate-pulse">
+      <div className="flex items-center justify-between border-b border-zinc-100 dark:border-zinc-800 pb-2.5">
+        <div className="flex items-center gap-2">
+          <div className="w-4 h-4 rounded bg-indigo-200 dark:bg-indigo-900/60" />
+          <div className="h-3.5 w-28 bg-zinc-200 dark:bg-zinc-700 rounded" />
+        </div>
+        <div className="h-5 w-20 rounded-full bg-zinc-200 dark:bg-zinc-700" />
+      </div>
+
+      <div className="grid grid-cols-2 gap-2 text-xs">
+        <div className="p-2 rounded-lg bg-zinc-50 dark:bg-zinc-800/60 border border-zinc-100 dark:border-zinc-800 space-y-1.5">
+          <div className="h-2.5 w-16 bg-zinc-200 dark:bg-zinc-700 rounded" />
+          <div className="h-3.5 w-20 bg-zinc-200 dark:bg-zinc-700 rounded" />
+        </div>
+        <div className="p-2 rounded-lg bg-zinc-50 dark:bg-zinc-800/60 border border-zinc-100 dark:border-zinc-800 space-y-1.5">
+          <div className="h-2.5 w-16 bg-zinc-200 dark:bg-zinc-700 rounded" />
+          <div className="h-3.5 w-16 bg-zinc-200 dark:bg-zinc-700 rounded" />
+        </div>
+      </div>
+
+      <div className="pt-1 space-y-1.5">
+        <div className="h-3 w-24 bg-zinc-200 dark:bg-zinc-700 rounded" />
+        <div className="h-3 w-40 bg-zinc-200 dark:bg-zinc-700 rounded" />
+        <div className="h-3 w-32 bg-zinc-200 dark:bg-zinc-700 rounded" />
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Skeleton Loading Placeholder for calculatePrice
+ */
+function CalculatePriceSkeleton() {
+  return (
+    <div className="rounded-xl border border-zinc-200/90 dark:border-zinc-700/90 bg-white dark:bg-zinc-900 p-3.5 shadow-sm space-y-3 animate-pulse">
+      <div className="flex items-center justify-between border-b border-zinc-100 dark:border-zinc-800 pb-2.5">
+        <div className="flex items-center gap-2">
+          <div className="w-4 h-4 rounded bg-indigo-200 dark:bg-indigo-900/60" />
+          <div className="h-3.5 w-36 bg-zinc-200 dark:bg-zinc-700 rounded" />
+        </div>
+        <div className="h-4 w-20 rounded-full bg-zinc-200 dark:bg-zinc-700" />
+      </div>
+
+      <div className="space-y-2 py-1">
+        <div className="flex justify-between">
+          <div className="h-3 w-20 bg-zinc-200 dark:bg-zinc-700 rounded" />
+          <div className="h-3 w-12 bg-zinc-200 dark:bg-zinc-700 rounded" />
+        </div>
+        <div className="flex justify-between">
+          <div className="h-3 w-28 bg-zinc-200 dark:bg-zinc-700 rounded" />
+          <div className="h-3 w-14 bg-zinc-200 dark:bg-zinc-700 rounded" />
+        </div>
+        <div className="flex justify-between">
+          <div className="h-3 w-24 bg-zinc-200 dark:bg-zinc-700 rounded" />
+          <div className="h-3 w-10 bg-zinc-200 dark:bg-zinc-700 rounded" />
+        </div>
+        <div className="flex justify-between">
+          <div className="h-3 w-28 bg-zinc-200 dark:bg-zinc-700 rounded" />
+          <div className="h-3 w-12 bg-zinc-200 dark:bg-zinc-700 rounded" />
+        </div>
+        <div className="border-t-2 border-zinc-200 dark:border-zinc-700 pt-2 flex justify-between">
+          <div className="h-4 w-24 bg-zinc-200 dark:bg-zinc-700 rounded" />
+          <div className="h-4 w-16 bg-zinc-200 dark:bg-zinc-700 rounded" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
  * Render Tool Invocation with 4 Lifecycle States:
  * 1. input-streaming: Muted compact inline indicator with partial args
- * 2. input-available: Active pulsing card with spinner and tool action label
+ * 2. input-available: Active pulsing card with spinner, tool action label, and matching skeleton layout (Zero CLS)
  * 3. output-available: Rich visual component for searchProducts, checkOrderStatus, calculatePrice
  * 4. output-error: Red error card with icon, message, and human suggestion
  */
-function ToolPartRenderer({ toolPart }: { toolPart: ToolPartData }) {
+function ToolPartRenderer({
+  toolPart,
+  onSuggestionClick,
+}: {
+  toolPart: ToolPartData;
+  onSuggestionClick?: (text: string) => void;
+}) {
   const { toolName, state, input = {}, output, errorText } = toolPart;
 
   // Determine 4 AI SDK 7 lifecycle states
@@ -161,7 +279,7 @@ function ToolPartRenderer({ toolPart }: { toolPart: ToolPartData }) {
     );
   }
 
-  // 2. STATE: input-available (loading state while tool executes)
+  // 2. STATE: input-available (loading state while tool executes, with matching layout skeletons to eliminate CLS)
   if (isInputAvailable) {
     const loadingText = (() => {
       if (toolName === "searchProducts") return `Searching FlyStore for "${input.query || "products"}"...`;
@@ -171,18 +289,25 @@ function ToolPartRenderer({ toolPart }: { toolPart: ToolPartData }) {
     })();
 
     return (
-      <div className="my-2.5 p-3 rounded-xl bg-indigo-50/60 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-800/80 text-indigo-900 dark:text-indigo-200 text-xs flex items-center gap-3 shadow-sm animate-pulse transition-all duration-200">
-        <div className="w-7 h-7 rounded-lg bg-indigo-600 text-white flex items-center justify-center shrink-0">
-          <Loader2 className="w-4 h-4 animate-spin" />
+      <div className="my-2.5 space-y-2.5 transition-all duration-200">
+        <div className="p-2.5 rounded-xl bg-indigo-50/70 dark:bg-indigo-950/30 border border-indigo-200/80 dark:border-indigo-800/80 text-indigo-900 dark:text-indigo-200 text-xs flex items-center gap-2.5 shadow-sm">
+          <div className="w-6 h-6 rounded-lg bg-indigo-600 text-white flex items-center justify-center shrink-0">
+            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+          </div>
+          <div>
+            <span className="font-semibold text-xs text-indigo-950 dark:text-indigo-100">
+              {getToolFriendlyName(toolName)}
+            </span>
+            <span className="text-[11px] text-indigo-700/90 dark:text-indigo-300/90 ml-2">
+              {loadingText}
+            </span>
+          </div>
         </div>
-        <div>
-          <p className="font-semibold text-xs text-indigo-950 dark:text-indigo-100">
-            {getToolFriendlyName(toolName)}
-          </p>
-          <p className="text-[11px] text-indigo-700/90 dark:text-indigo-300/90 mt-0.5">
-            {loadingText}
-          </p>
-        </div>
+
+        {/* Skeleton matching real content dimensions to prevent Cumulative Layout Shift (CLS) */}
+        {toolName === "searchProducts" && <SearchProductsSkeleton input={input} />}
+        {toolName === "checkOrderStatus" && <CheckOrderStatusSkeleton />}
+        {toolName === "calculatePrice" && <CalculatePriceSkeleton />}
       </div>
     );
   }
@@ -239,7 +364,9 @@ function ToolPartRenderer({ toolPart }: { toolPart: ToolPartData }) {
   if (isOutputAvailable && output) {
     return (
       <div className="my-3 transition-all duration-200 ease-in-out">
-        {toolName === "searchProducts" && <SearchProductsOutput result={output} />}
+        {toolName === "searchProducts" && (
+          <SearchProductsOutput result={output} onSuggestionClick={onSuggestionClick} />
+        )}
         {toolName === "checkOrderStatus" && <CheckOrderStatusOutput result={output} />}
         {toolName === "calculatePrice" && <CalculatePriceOutput result={output} />}
       </div>
@@ -252,7 +379,13 @@ function ToolPartRenderer({ toolPart }: { toolPart: ToolPartData }) {
 /**
  * Output Available: searchProducts
  */
-function SearchProductsOutput({ result }: { result: any }) {
+function SearchProductsOutput({
+  result,
+  onSuggestionClick,
+}: {
+  result: any;
+  onSuggestionClick?: (text: string) => void;
+}) {
   const products: Array<{
     id: string;
     name: string;
@@ -263,9 +396,26 @@ function SearchProductsOutput({ result }: { result: any }) {
 
   if (products.length === 0) {
     return (
-      <div className="p-3.5 rounded-xl bg-zinc-100 dark:bg-zinc-800/80 border border-zinc-200 dark:border-zinc-700 text-xs text-zinc-600 dark:text-zinc-300 flex items-center gap-2.5">
-        <Search className="w-4 h-4 text-zinc-400" />
-        <span>No products matching your search criteria were found in FlyStore.</span>
+      <div className="p-4 rounded-xl bg-zinc-50 dark:bg-zinc-800/60 border border-zinc-200 dark:border-zinc-700 text-xs text-zinc-700 dark:text-zinc-300 space-y-2.5">
+        <div className="flex items-center gap-2 text-zinc-900 dark:text-zinc-100 font-semibold">
+          <Search className="w-4 h-4 text-zinc-400 shrink-0" />
+          <span>No products found for &ldquo;{result.query || "your query"}&rdquo;</span>
+        </div>
+        <p className="text-[11px] text-zinc-500 dark:text-zinc-400 leading-relaxed">
+          We couldn&apos;t find any matching products in the FlyStore catalog. Try a broader search term (e.g. &ldquo;Audio&rdquo;, &ldquo;Wearables&rdquo;, or &ldquo;Accessories&rdquo;) or remove any price filters.
+        </p>
+        <div className="flex flex-wrap gap-1.5 pt-1">
+          {["Audio", "Wearables", "Accessories", "Computers"].map((cat) => (
+            <button
+              key={cat}
+              type="button"
+              onClick={() => onSuggestionClick?.(`Search products in ${cat}`)}
+              className="text-[10px] px-2.5 py-1 rounded-md bg-white dark:bg-zinc-700 border border-zinc-200 dark:border-zinc-600 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-zinc-600 transition-colors font-medium shadow-xs"
+            >
+              Browse {cat}
+            </button>
+          ))}
+        </div>
       </div>
     );
   }
@@ -481,11 +631,13 @@ export default function FlyBot({ embedded = false }: FlyBotProps) {
   const [isOpen, setIsOpen] = useState<boolean>(embedded);
   const [input, setInput] = useState<string>("");
   const [isScrolledUp, setIsScrolledUp] = useState<boolean>(false);
+  const [isRetrying, setIsRetrying] = useState<boolean>(false);
 
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
+  const inputRef = useRef<HTMLInputElement | null>(null);
 
-  const { messages, sendMessage, stop, status, error } = useChat();
+  const { messages, sendMessage, stop, status, error, regenerate, clearError } = useChat();
 
   const isStreamingOrSubmitted = status === "submitted" || status === "streaming";
 
@@ -524,6 +676,32 @@ export default function FlyBot({ embedded = false }: FlyBotProps) {
     stop();
   };
 
+  const handleSuggestionClick = (suggestionText: string) => {
+    setInput(suggestionText);
+    if (inputRef.current) {
+      inputRef.current.focus();
+    }
+  };
+
+  const handleRetry = async () => {
+    if (isRetrying || isStreamingOrSubmitted) return;
+    setIsRetrying(true);
+    try {
+      if (clearError) {
+        clearError();
+      }
+      if (typeof regenerate === "function") {
+        await regenerate();
+      } else {
+        await sendMessage();
+      }
+    } catch (err) {
+      console.error("[FlyBot Retry error]:", err);
+    } finally {
+      setIsRetrying(false);
+    }
+  };
+
   const lastMessage = messages[messages.length - 1];
   const lastMessageText = lastMessage ? getMessageText(lastMessage) : "";
   const isWaitingForFirstToken =
@@ -533,15 +711,18 @@ export default function FlyBot({ embedded = false }: FlyBotProps) {
   const isError = status === "error";
 
   const errorMessage = (() => {
-    if (!isError || !error) return null;
-    const msg = error.message || "";
+    if (!isError && !error) return null;
+    const msg = error?.message || "";
     if (msg.includes("quota") || msg.includes("429") || msg.includes("RESOURCE_EXHAUSTED")) {
-      return "FlyBot's API quota has been exceeded. Please wait a minute and try again.";
+      return "FlyBot API rate limit reached. Please wait a moment and click Retry.";
     }
     if (msg.includes("API key") || msg.includes("401")) {
-      return "API key issue — FlyBot can't authenticate with the AI service right now.";
+      return "API key issue — FlyBot cannot authenticate with the AI service right now.";
     }
-    return "Something went wrong. Please try sending your message again.";
+    if (msg.includes("Failed to fetch") || msg.includes("NetworkError") || msg.includes("network")) {
+      return "Network connection issue. Please check your internet connection and click Retry.";
+    }
+    return msg || "Something went wrong while communicating with FlyBot. Please try again.";
   })();
 
   const chatContent = (
@@ -582,7 +763,7 @@ export default function FlyBot({ embedded = false }: FlyBotProps) {
       <div
         ref={scrollContainerRef}
         onScroll={handleScroll}
-        className="flex-1 overflow-y-auto p-4 space-y-4 relative scroll-smooth bg-zinc-50/50 dark:bg-zinc-950/40"
+        className="flex-1 overflow-y-auto p-4 space-y-4 relative scroll-smooth overscroll-y-contain bg-zinc-50/50 dark:bg-zinc-950/40"
       >
         {/* Welcome Banner if empty */}
         {messages.length === 0 && (
@@ -599,17 +780,15 @@ export default function FlyBot({ embedded = false }: FlyBotProps) {
 
             <div className="flex flex-wrap gap-1.5 justify-center pt-2 max-w-xs">
               {[
-                "Search audio products under $100",
-                "Status of order ORD-1002",
+                "Search for audio products",
+                "Check order ORD-1002",
                 "Calculate price for 2 FlyPods Pro",
               ].map((suggestion) => (
                 <button
                   key={suggestion}
-                  onClick={() => {
-                    sendMessage({ text: suggestion });
-                    setIsScrolledUp(false);
-                  }}
-                  className="text-xs px-3 py-1.5 rounded-full bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-zinc-700/80 transition-colors shadow-sm text-left"
+                  type="button"
+                  onClick={() => handleSuggestionClick(suggestion)}
+                  className="text-xs px-3 py-1.5 rounded-full bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-zinc-700/80 transition-all shadow-sm text-left hover:scale-[1.02] active:scale-[0.98]"
                 >
                   {suggestion}
                 </button>
@@ -709,7 +888,11 @@ export default function FlyBot({ embedded = false }: FlyBotProps) {
               >
                 {/* Render Tool Parts */}
                 {toolParts.map((tp, idx) => (
-                  <ToolPartRenderer key={tp.toolCallId || idx} toolPart={tp} />
+                  <ToolPartRenderer
+                    key={tp.toolCallId || idx}
+                    toolPart={tp}
+                    onSuggestionClick={handleSuggestionClick}
+                  />
                 ))}
 
                 {/* Text Content */}
@@ -774,15 +957,44 @@ export default function FlyBot({ embedded = false }: FlyBotProps) {
             </div>
           )}
 
-        {/* Global Error Banner */}
-        {isError && errorMessage && (
-          <div className="flex items-start gap-2.5 flex-row">
+        {/* Inline Chat Error Banner with Retry */}
+        {(isError || Boolean(error)) && errorMessage && (
+          <div className="flex items-start gap-2.5 flex-row animate-in fade-in duration-200">
             <div className="w-7 h-7 rounded-full bg-rose-600 text-white flex items-center justify-center text-xs font-medium shrink-0 mt-1 shadow-sm">
               <AlertTriangle className="w-3.5 h-3.5" />
             </div>
-            <div className="max-w-[82%] sm:max-w-[78%] rounded-2xl rounded-tl-none px-4 py-3 text-sm shadow-sm bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800/60 text-rose-800 dark:text-rose-200">
-              <p className="font-medium text-xs mb-1">⚠️ Error</p>
-              <p className="text-xs leading-relaxed">{errorMessage}</p>
+            <div className="max-w-[85%] sm:max-w-[80%] rounded-2xl rounded-tl-none p-3.5 text-sm shadow-sm bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800/70 text-rose-900 dark:text-rose-100 space-y-2">
+              <div className="flex items-center justify-between">
+                <p className="font-semibold text-xs text-rose-900 dark:text-rose-200">
+                  ⚠️ Error Generating Response
+                </p>
+                <span className="px-1.5 py-0.2 rounded text-[10px] font-semibold bg-rose-200/70 text-rose-800 dark:bg-rose-900/80 dark:text-rose-200">
+                  Failed
+                </span>
+              </div>
+              <p className="text-xs leading-relaxed text-rose-800 dark:text-rose-300">
+                {errorMessage}
+              </p>
+              <div className="pt-1">
+                <button
+                  type="button"
+                  onClick={handleRetry}
+                  disabled={isRetrying || isStreamingOrSubmitted}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 active:bg-rose-800 disabled:opacity-50 disabled:pointer-events-none text-white text-xs font-semibold shadow-sm transition-all hover:scale-[1.02] active:scale-[0.98]"
+                >
+                  {isRetrying ? (
+                    <>
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      <span>Retrying...</span>
+                    </>
+                  ) : (
+                    <>
+                      <RefreshCw className="w-3.5 h-3.5" />
+                      <span>Retry</span>
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
           </div>
         )}
@@ -794,6 +1006,7 @@ export default function FlyBot({ embedded = false }: FlyBotProps) {
       {isScrolledUp && (
         <div className="absolute bottom-20 left-1/2 -translate-x-1/2 z-10">
           <button
+            type="button"
             onClick={() => {
               scrollToBottom(true);
               setIsScrolledUp(false);
@@ -806,10 +1019,11 @@ export default function FlyBot({ embedded = false }: FlyBotProps) {
         </div>
       )}
 
-      {/* Input Form Footer */}
-      <div className="p-3 bg-white dark:bg-zinc-900 border-t border-zinc-200 dark:border-zinc-800">
+      {/* Input Form Footer — pinned sticky bottom with iOS safe-area support */}
+      <div className="p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] bg-white dark:bg-zinc-900 border-t border-zinc-200 dark:border-zinc-800 shrink-0 sticky bottom-0">
         <form onSubmit={handleSubmit} className="flex items-center gap-2">
           <input
+            ref={inputRef}
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
@@ -843,18 +1057,19 @@ export default function FlyBot({ embedded = false }: FlyBotProps) {
   );
 
   if (embedded) {
-    return <div className="w-full h-[600px] max-w-2xl mx-auto">{chatContent}</div>;
+    return <div className="w-full h-[600px] max-h-[100dvh] max-w-2xl mx-auto">{chatContent}</div>;
   }
 
   return (
     <div className="fixed bottom-5 right-5 z-50 flex flex-col items-end">
       {isOpen && (
-        <div className="w-[400px] max-w-[calc(100vw-2.5rem)] h-[540px] max-h-[calc(100vh-6rem)] mb-3 transition-all duration-200 ease-in-out animate-in fade-in slide-in-from-bottom-4">
+        <div className="w-[400px] max-w-[calc(100vw-1.5rem)] h-[540px] max-h-[calc(100dvh-5rem)] mb-3 transition-all duration-200 ease-in-out animate-in fade-in slide-in-from-bottom-4 max-sm:fixed max-sm:inset-0 max-sm:w-full max-sm:h-[100dvh] max-sm:max-h-[100dvh] max-sm:max-w-none max-sm:mb-0 max-sm:rounded-none max-sm:z-50">
           {chatContent}
         </div>
       )}
 
       <button
+        type="button"
         onClick={() => setIsOpen((prev) => !prev)}
         aria-label={isOpen ? "Close FlyBot chat" : "Open FlyBot chat"}
         className="flex items-center gap-2 px-4 py-3 rounded-full bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-semibold text-sm shadow-xl hover:shadow-indigo-500/25 transition-all hover:scale-105 active:scale-95"
