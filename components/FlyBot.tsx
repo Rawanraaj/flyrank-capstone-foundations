@@ -28,15 +28,15 @@ import {
 } from "lucide-react";
 
 /**
- * Interface for ToolInvocation from AI SDK
+ * Interface for AI SDK 7 Tool UI Part Data
  */
-interface ToolInvocation {
-  toolCallId: string;
+interface ToolPartData {
+  toolCallId?: string;
   toolName: string;
-  args: Record<string, any>;
-  state: "partial-call" | "call" | "result";
-  result?: any;
-  isError?: boolean;
+  state: "input-streaming" | "input-available" | "output-available" | "output-error" | string;
+  input?: Record<string, any>;
+  output?: any;
+  errorText?: string;
 }
 
 /**
@@ -127,30 +127,28 @@ function getToolFriendlyName(toolName: string): string {
  * 3. output-available: Rich visual component for searchProducts, checkOrderStatus, calculatePrice
  * 4. output-error: Red error card with icon, message, and human suggestion
  */
-function ToolPartRenderer({ toolInvocation }: { toolInvocation: ToolInvocation }) {
-  const { toolName, args, state, result, isError } = toolInvocation;
+function ToolPartRenderer({ toolPart }: { toolPart: ToolPartData }) {
+  const { toolName, state, input = {}, output, errorText } = toolPart;
 
-  // Determine state
-  const isStreamingInput = state === "partial-call";
-  const isInputAvailable = state === "call";
-
-  // Check if result is error (thrown from execute or has isError property)
+  // Determine 4 AI SDK 7 lifecycle states
+  const isStreamingInput = state === "input-streaming" || state === "partial-call";
+  const isInputAvailable = state === "input-available" || state === "call";
   const isOutputError =
-    state === "result" &&
-    (Boolean(isError) ||
-      (result && typeof result === "object" && result.isError) ||
-      (result instanceof Error) ||
-      (typeof result === "string" && result.toLowerCase().includes("error")));
+    state === "output-error" ||
+    Boolean(errorText) ||
+    (output && typeof output === "object" && output.isError) ||
+    (output instanceof Error);
 
-  const isOutputAvailable = state === "result" && !isOutputError;
+  const isOutputAvailable = (state === "output-available" || state === "result") && !isOutputError;
 
   // 1. STATE: input-streaming
   if (isStreamingInput) {
-    const partialParamStr = args
-      ? Object.entries(args)
-          .map(([k, v]) => `${k}: "${v}"`)
-          .join(", ")
-      : "";
+    const partialParamStr =
+      input && Object.keys(input).length > 0
+        ? Object.entries(input)
+            .map(([k, v]) => `${k}: "${v}"`)
+            .join(", ")
+        : "";
 
     return (
       <div className="my-2 py-1.5 px-3 rounded-lg bg-zinc-100/70 dark:bg-zinc-800/40 text-zinc-500 dark:text-zinc-400 text-xs font-mono flex items-center gap-2 border border-dashed border-zinc-300/60 dark:border-zinc-700/60 transition-all duration-200">
@@ -166,9 +164,9 @@ function ToolPartRenderer({ toolInvocation }: { toolInvocation: ToolInvocation }
   // 2. STATE: input-available (loading state while tool executes)
   if (isInputAvailable) {
     const loadingText = (() => {
-      if (toolName === "searchProducts") return `Searching FlyStore for "${args.query || "products"}"...`;
-      if (toolName === "checkOrderStatus") return `Checking status for order ${args.orderId || ""}...`;
-      if (toolName === "calculatePrice") return `Calculating price estimate for ${args.productName || "item"}...`;
+      if (toolName === "searchProducts") return `Searching FlyStore for "${input.query || "products"}"...`;
+      if (toolName === "checkOrderStatus") return `Checking status for order ${input.orderId || ""}...`;
+      if (toolName === "calculatePrice") return `Calculating price estimate for ${input.productName || "item"}...`;
       return `Executing ${toolName}...`;
     })();
 
@@ -192,9 +190,10 @@ function ToolPartRenderer({ toolInvocation }: { toolInvocation: ToolInvocation }
   // 4. STATE: output-error
   if (isOutputError) {
     const rawErrorMessage = (() => {
-      if (typeof result === "string") return result;
-      if (result && typeof result === "object") {
-        return result.message || result.error || "Execution failed";
+      if (errorText) return errorText;
+      if (typeof output === "string") return output;
+      if (output && typeof output === "object") {
+        return output.message || output.error || "Execution failed";
       }
       return "Tool execution encountered an error";
     })();
@@ -237,12 +236,12 @@ function ToolPartRenderer({ toolInvocation }: { toolInvocation: ToolInvocation }
   }
 
   // 3. STATE: output-available (successful rich component rendering)
-  if (isOutputAvailable && result) {
+  if (isOutputAvailable && output) {
     return (
       <div className="my-3 transition-all duration-200 ease-in-out">
-        {toolName === "searchProducts" && <SearchProductsOutput result={result} />}
-        {toolName === "checkOrderStatus" && <CheckOrderStatusOutput result={result} />}
-        {toolName === "calculatePrice" && <CalculatePriceOutput result={result} />}
+        {toolName === "searchProducts" && <SearchProductsOutput result={output} />}
+        {toolName === "checkOrderStatus" && <CheckOrderStatusOutput result={output} />}
+        {toolName === "calculatePrice" && <CalculatePriceOutput result={output} />}
       </div>
     );
   }
@@ -625,14 +624,55 @@ export default function FlyBot({ embedded = false }: FlyBotProps) {
           const textContent = getMessageText(message);
           const { paragraphs } = formatSafeText(textContent);
 
-          // Extract tool invocation parts from message.parts
-          const toolInvocations: ToolInvocation[] = [];
+          // Extract tool parts from message.parts or message.toolInvocations
+          const toolParts: ToolPartData[] = [];
           if (Array.isArray(message.parts)) {
-            message.parts.forEach((part: any) => {
-              if (part.type === "tool-invocation" && part.toolInvocation) {
-                toolInvocations.push(part.toolInvocation);
-              } else if (part.toolInvocation) {
-                toolInvocations.push(part.toolInvocation);
+            message.parts.forEach((part: any, index: number) => {
+              if (
+                part.type?.startsWith("tool-") ||
+                part.type === "dynamic-tool" ||
+                part.type === "tool-invocation" ||
+                part.toolInvocation
+              ) {
+                const rawName =
+                  part.toolName ||
+                  (part.type ? part.type.replace(/^tool-/, "") : "") ||
+                  part.toolInvocation?.toolName ||
+                  "tool";
+                const toolName = rawName === "invocation" ? "tool" : rawName;
+
+                toolParts.push({
+                  toolCallId:
+                    part.toolCallId ||
+                    part.id ||
+                    part.toolInvocation?.toolCallId ||
+                    `tp-${index}`,
+                  toolName,
+                  state: part.state || part.toolInvocation?.state || "output-available",
+                  input: part.input ?? part.args ?? part.toolInvocation?.args ?? {},
+                  output: part.output ?? part.result ?? part.toolInvocation?.result,
+                  errorText: part.errorText ?? part.error ?? (part.isError ? "Tool execution failed" : undefined),
+                });
+              }
+            });
+          }
+
+          if ((message as any).toolInvocations && Array.isArray((message as any).toolInvocations)) {
+            (message as any).toolInvocations.forEach((ti: any) => {
+              if (!toolParts.some((existing) => existing.toolCallId === ti.toolCallId)) {
+                const stateMap: Record<string, string> = {
+                  "partial-call": "input-streaming",
+                  call: "input-available",
+                  result: ti.isError ? "output-error" : "output-available",
+                };
+                toolParts.push({
+                  toolCallId: ti.toolCallId,
+                  toolName: ti.toolName,
+                  state: stateMap[ti.state] || ti.state,
+                  input: ti.args || {},
+                  output: ti.result,
+                  errorText: ti.isError ? "Tool execution failed" : undefined,
+                });
               }
             });
           }
@@ -667,9 +707,9 @@ export default function FlyBot({ embedded = false }: FlyBotProps) {
                     : "bg-white dark:bg-zinc-800 border border-zinc-200/80 dark:border-zinc-700/80 text-zinc-800 dark:text-zinc-100 rounded-tl-none"
                 }`}
               >
-                {/* Render Tool Invocations */}
-                {toolInvocations.map((ti) => (
-                  <ToolPartRenderer key={ti.toolCallId} toolInvocation={ti} />
+                {/* Render Tool Parts */}
+                {toolParts.map((tp, idx) => (
+                  <ToolPartRenderer key={tp.toolCallId || idx} toolPart={tp} />
                 ))}
 
                 {/* Text Content */}
@@ -702,7 +742,7 @@ export default function FlyBot({ embedded = false }: FlyBotProps) {
                 )}
 
                 {/* Loading indicator if message is empty and streaming */}
-                {!textContent && toolInvocations.length === 0 && !isUser && isStreamingOrSubmitted && (
+                {!textContent && toolParts.length === 0 && !isUser && isStreamingOrSubmitted && (
                   <div className="flex items-center gap-1.5 py-1 px-1">
                     <span className="w-2 h-2 rounded-full bg-indigo-500 animate-bounce [animation-delay:-0.3s]"></span>
                     <span className="w-2 h-2 rounded-full bg-indigo-500 animate-bounce [animation-delay:-0.15s]"></span>

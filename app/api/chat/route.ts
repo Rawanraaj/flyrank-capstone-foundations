@@ -40,8 +40,18 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json();
-    const messages: UIMessage[] = body.messages ?? [];
-    const convertedMessages = await convertToModelMessages(messages);
+    const rawMessages = body.messages ?? [];
+    const normalizedMessages: UIMessage[] = rawMessages.map((m: any) => {
+      if (!m.parts || !Array.isArray(m.parts)) {
+        return {
+          id: m.id || crypto.randomUUID(),
+          role: m.role || "user",
+          parts: [{ type: "text", text: typeof m.content === "string" ? m.content : "" }],
+        };
+      }
+      return m;
+    });
+    const convertedMessages = await convertToModelMessages(normalizedMessages);
 
     const model = getChatModel();
 
