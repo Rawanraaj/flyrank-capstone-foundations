@@ -27,6 +27,9 @@ const ORDERS_DB = [
  * API Route Handler for FlyBot streaming chat endpoint.
  */
 export async function POST(req: Request) {
+  // TEMP-TEST-429-REMOVE-BEFORE-COMMIT
+  return new Response(JSON.stringify({ error: 'Rate limit exceeded' }), { status: 429, headers: { 'Content-Type': 'application/json' } });
+
   console.log("[FlyBot] POST /api/chat — request received");
 
   try {
