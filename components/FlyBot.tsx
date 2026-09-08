@@ -713,8 +713,21 @@ export default function FlyBot({ embedded = false }: FlyBotProps) {
   const errorMessage = (() => {
     if (!isError && !error) return null;
     const msg = error?.message || "";
-    if (msg.includes("quota") || msg.includes("429") || msg.includes("RESOURCE_EXHAUSTED")) {
-      return "FlyBot API rate limit reached. Please wait a moment and click Retry.";
+    const errObj = error as any;
+    const is429 =
+      errObj?.status === 429 ||
+      errObj?.statusCode === 429 ||
+      errObj?.response?.status === 429;
+    const lowerMsg = (msg + " " + String(error ?? "")).toLowerCase();
+
+    if (
+      is429 ||
+      lowerMsg.includes("rate limit") ||
+      lowerMsg.includes("429") ||
+      lowerMsg.includes("quota") ||
+      lowerMsg.includes("resource_exhausted")
+    ) {
+      return "You're sending messages a bit fast — please wait a moment and try again.";
     }
     if (msg.includes("API key") || msg.includes("401")) {
       return "API key issue — FlyBot cannot authenticate with the AI service right now.";
