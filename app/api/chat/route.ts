@@ -193,11 +193,12 @@ Always execute the appropriate tool rather than answering from your own reasonin
         return "An unexpected error occurred while generating a response.";
       },
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error("[FlyBot POST catch]:", error);
+    const errorMessage = error instanceof Error ? error.message : String(error);
     return new Response(
       JSON.stringify({
-        error: error instanceof Error ? error.message : "Chat processing failed",
+        error: errorMessage || "Chat processing failed",
       }),
       { status: 500, headers: { "Content-Type": "application/json" } }
     );
