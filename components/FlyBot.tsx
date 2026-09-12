@@ -775,22 +775,39 @@ export default function FlyBot({ embedded = false }: FlyBotProps) {
 
   const handleRetry = async () => {
     if (isRetrying || isStreamingOrSubmitted) return;
-    if (sendButtonRef.current) {
-      await sendButtonRef.current.trigger();
-    } else {
-      setIsRetrying(true);
-      try {
-        if (clearError) clearError();
-        if (typeof regenerate === "function") {
-          await regenerate();
-        } else {
-          await sendMessage();
-        }
-      } catch (err) {
-        console.error("[FlyBot Retry error]:", err);
-      } finally {
-        setIsRetrying(false);
+    setIsRetrying(true);
+
+    try {
+      if (clearError) {
+        clearError();
       }
+
+      if (sendButtonRef.current) {
+        sendButtonRef.current.reset();
+      }
+
+      // Track stream completion during retry
+      const streamCompletionPromise = new Promise<void>((resolve, reject) => {
+        streamResolversRef.current = { resolve, reject };
+      });
+
+      const lastUserMsg = [...messages].reverse().find((m) => m.role === "user");
+      const lastUserText = lastUserMsg ? getMessageText(lastUserMsg) : "";
+
+      if (typeof regenerate === "function") {
+        await regenerate();
+      } else if (lastUserText) {
+        await sendMessage({ text: lastUserText });
+      } else {
+        await sendMessage();
+      }
+
+      await streamCompletionPromise;
+    } catch (err) {
+      console.error("[FlyBot Retry error]:", err);
+      streamResolversRef.current = null;
+    } finally {
+      setIsRetrying(false);
     }
   };
 

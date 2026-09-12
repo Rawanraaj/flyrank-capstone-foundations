@@ -142,7 +142,7 @@ export const AnimatedSendButton = forwardRef<
 
     // Interruptibility guard: do not double-fire if already executing, disabled, or in success
     if (
-      disabled ||
+      (disabled && internalState !== "error") ||
       isExecutingRef.current ||
       internalState === "loading" ||
       internalState === "success"
