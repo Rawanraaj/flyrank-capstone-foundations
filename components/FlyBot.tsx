@@ -638,10 +638,47 @@ export default function FlyBot({ embedded = false }: FlyBotProps) {
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
   const sendButtonRef = useRef<AnimatedSendButtonRef | null>(null);
+  const streamResolversRef = useRef<{
+    resolve: () => void;
+    reject: (err: Error) => void;
+  } | null>(null);
 
   const { messages, sendMessage, stop, status, error, regenerate, clearError } = useChat();
 
+  const prevStatusRef = useRef(status);
   const isStreamingOrSubmitted = status === "submitted" || status === "streaming";
+
+  // Synchronize AnimatedSendButton lifecycle with stream completion/error
+  useEffect(() => {
+    const prevStatus = prevStatusRef.current;
+    prevStatusRef.current = status;
+
+    if (!streamResolversRef.current) return;
+
+    // Transition from streaming/submitted to ready = stream finished successfully
+    if (
+      (prevStatus === "streaming" || prevStatus === "submitted") &&
+      status === "ready"
+    ) {
+      streamResolversRef.current.resolve();
+      streamResolversRef.current = null;
+    } else if (status === "error") {
+      streamResolversRef.current.reject(
+        error || new Error("Response generation failed")
+      );
+      streamResolversRef.current = null;
+    }
+  }, [status, error]);
+
+  // Clean up any pending promise on unmount
+  useEffect(() => {
+    return () => {
+      if (streamResolversRef.current) {
+        streamResolversRef.current.reject(new Error("Component unmounted"));
+        streamResolversRef.current = null;
+      }
+    };
+  }, []);
 
   const handleScroll = useCallback(() => {
     if (!scrollContainerRef.current) return;
@@ -665,20 +702,51 @@ export default function FlyBot({ embedded = false }: FlyBotProps) {
   }, [messages, status, isScrolledUp, scrollToBottom]);
 
   const handleSendMessage = async () => {
+    if (isStreamingOrSubmitted) return;
+
     const trimmed = input.trim();
-    if (!trimmed || isStreamingOrSubmitted) return;
+    if (!trimmed) {
+      // If retrying from error state with empty input, regenerate
+      if (status === "error" || lastMessage?.role === "user") {
+        if (clearError) clearError();
+        const completionPromise = new Promise<void>((resolve, reject) => {
+          streamResolversRef.current = { resolve, reject };
+        });
+        try {
+          if (typeof regenerate === "function") {
+            await regenerate();
+          } else {
+            await sendMessage();
+          }
+        } catch (err) {
+          streamResolversRef.current = null;
+          throw err;
+        }
+        return completionPromise;
+      }
+      return;
+    }
 
     const messageText = trimmed;
     setInput("");
     setIsScrolledUp(false);
+    if (clearError) clearError();
+
+    // Create a promise that stays pending until the stream completes or errors
+    const completionPromise = new Promise<void>((resolve, reject) => {
+      streamResolversRef.current = { resolve, reject };
+    });
 
     try {
       await sendMessage({ text: messageText });
     } catch (err) {
       console.error("[FlyBot Send Error]:", err);
       setInput(messageText);
+      streamResolversRef.current = null;
       throw err;
     }
+
+    return completionPromise;
   };
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
@@ -692,6 +760,10 @@ export default function FlyBot({ embedded = false }: FlyBotProps) {
 
   const handleStop = () => {
     stop();
+    if (streamResolversRef.current) {
+      streamResolversRef.current.reject(new Error("Response stopped by user"));
+      streamResolversRef.current = null;
+    }
   };
 
   const handleSuggestionClick = (suggestionText: string) => {
@@ -703,20 +775,22 @@ export default function FlyBot({ embedded = false }: FlyBotProps) {
 
   const handleRetry = async () => {
     if (isRetrying || isStreamingOrSubmitted) return;
-    setIsRetrying(true);
-    try {
-      if (clearError) {
-        clearError();
+    if (sendButtonRef.current) {
+      await sendButtonRef.current.trigger();
+    } else {
+      setIsRetrying(true);
+      try {
+        if (clearError) clearError();
+        if (typeof regenerate === "function") {
+          await regenerate();
+        } else {
+          await sendMessage();
+        }
+      } catch (err) {
+        console.error("[FlyBot Retry error]:", err);
+      } finally {
+        setIsRetrying(false);
       }
-      if (typeof regenerate === "function") {
-        await regenerate();
-      } else {
-        await sendMessage();
-      }
-    } catch (err) {
-      console.error("[FlyBot Retry error]:", err);
-    } finally {
-      setIsRetrying(false);
     }
   };
 
@@ -1057,30 +1131,37 @@ export default function FlyBot({ embedded = false }: FlyBotProps) {
             ref={inputRef}
             type="text"
             value={input}
-            onChange={(e) => setInput(e.target.value)}
+            onChange={(e) => {
+              setInput(e.target.value);
+              if (sendButtonRef.current?.state === "error") {
+                sendButtonRef.current.reset();
+              }
+            }}
             placeholder="Ask FlyBot to search, check orders, or calculate total..."
             className="flex-1 px-3.5 py-2.5 text-sm rounded-xl bg-zinc-100 dark:bg-zinc-800/90 border border-zinc-200 dark:border-zinc-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 dark:placeholder-zinc-500"
           />
 
-          {isStreamingOrSubmitted ? (
+          {/* Secondary stop button: visible only while actively streaming or submitted */}
+          {isStreamingOrSubmitted && (
             <button
               type="button"
               onClick={handleStop}
-              className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 active:bg-rose-800 text-white text-xs font-semibold transition-all shrink-0 shadow-sm"
+              className="p-2.5 rounded-xl bg-zinc-100 hover:bg-rose-50 hover:text-rose-600 dark:bg-zinc-800 dark:hover:bg-rose-950/50 dark:hover:text-rose-400 text-zinc-500 dark:text-zinc-400 border border-zinc-200 dark:border-zinc-700 hover:border-rose-200 dark:hover:border-rose-800 transition-all shrink-0 shadow-sm flex items-center justify-center animate-in fade-in zoom-in-95 duration-150"
               aria-label="Stop generating response"
+              title="Stop generating response"
             >
               <Square className="w-3.5 h-3.5 fill-current" />
-              <span>Stop</span>
             </button>
-          ) : (
-            <AnimatedSendButton
-              ref={sendButtonRef}
-              type="submit"
-              disabled={!input.trim()}
-              onSend={handleSendMessage}
-              ariaLabel="Send message"
-            />
           )}
+
+          {/* AnimatedSendButton owns the entire send/stream lifecycle (never replaced or hidden) */}
+          <AnimatedSendButton
+            ref={sendButtonRef}
+            type="submit"
+            disabled={!input.trim() && !isStreamingOrSubmitted}
+            onSend={handleSendMessage}
+            ariaLabel="Send message"
+          />
         </form>
       </div>
     </div>

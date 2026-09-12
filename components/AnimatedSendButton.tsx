@@ -122,10 +122,10 @@ export const AnimatedSendButton = forwardRef<
   // Compute the single source of truth: effectiveState
   const effectiveState: ButtonState = (() => {
     if (forcedState) return forcedState;
-    if (disabled) return "disabled";
     if (internalState === "loading") return "loading";
     if (internalState === "success") return "success";
     if (internalState === "error") return "error";
+    if (disabled) return "disabled";
     if (isFocused) return "focus";
     if (isHovered) return "hover";
     return "idle";
