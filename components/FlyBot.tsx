@@ -27,6 +27,7 @@ import {
   DollarSign,
   RefreshCw,
 } from "lucide-react";
+import AnimatedSendButton, { type AnimatedSendButtonRef } from "./AnimatedSendButton";
 
 /**
  * Interface for AI SDK 7 Tool UI Part Data
@@ -636,6 +637,7 @@ export default function FlyBot({ embedded = false }: FlyBotProps) {
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
+  const sendButtonRef = useRef<AnimatedSendButtonRef | null>(null);
 
   const { messages, sendMessage, stop, status, error, regenerate, clearError } = useChat();
 
@@ -662,14 +664,30 @@ export default function FlyBot({ embedded = false }: FlyBotProps) {
     }
   }, [messages, status, isScrolledUp, scrollToBottom]);
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
+  const handleSendMessage = async () => {
     const trimmed = input.trim();
     if (!trimmed || isStreamingOrSubmitted) return;
 
-    sendMessage({ text: trimmed });
+    const messageText = trimmed;
     setInput("");
     setIsScrolledUp(false);
+
+    try {
+      await sendMessage({ text: messageText });
+    } catch (err) {
+      console.error("[FlyBot Send Error]:", err);
+      setInput(messageText);
+      throw err;
+    }
+  };
+
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (sendButtonRef.current) {
+      sendButtonRef.current.trigger();
+    } else {
+      handleSendMessage();
+    }
   };
 
   const handleStop = () => {
@@ -1055,14 +1073,13 @@ export default function FlyBot({ embedded = false }: FlyBotProps) {
               <span>Stop</span>
             </button>
           ) : (
-            <button
+            <AnimatedSendButton
+              ref={sendButtonRef}
               type="submit"
               disabled={!input.trim()}
-              className="p-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 disabled:opacity-40 disabled:hover:bg-indigo-600 text-white transition-all shrink-0 shadow-sm"
-              aria-label="Send message"
-            >
-              <Send className="w-4 h-4" />
-            </button>
+              onSend={handleSendMessage}
+              ariaLabel="Send message"
+            />
           )}
         </form>
       </div>
