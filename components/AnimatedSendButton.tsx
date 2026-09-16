@@ -212,15 +212,17 @@ export const AnimatedSendButton = forwardRef<
     },
   };
 
-  // State-specific visual styling
+  // State-specific visual styling with state-appropriate, high-contrast focus-visible rings
   const stateClasses = {
-    idle: "bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm",
-    hover: "bg-indigo-700 text-white shadow-md",
+    idle: "bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm focus-visible:ring-indigo-500 dark:focus-visible:ring-indigo-400",
+    hover: "bg-indigo-700 text-white shadow-md focus-visible:ring-indigo-500 dark:focus-visible:ring-indigo-400",
     focus:
-      "bg-indigo-700 text-white ring-2 ring-indigo-400 ring-offset-2 dark:ring-offset-zinc-900 shadow-md",
+      "bg-indigo-700 text-white shadow-md ring-2 ring-indigo-500 dark:ring-indigo-400 ring-offset-2 ring-offset-white dark:ring-offset-zinc-900 focus-visible:ring-indigo-500 dark:focus-visible:ring-indigo-400",
     loading: "bg-indigo-600 text-white cursor-wait opacity-95",
-    success: "bg-emerald-600 text-white shadow-sm",
-    error: "bg-rose-600 hover:bg-rose-700 active:bg-rose-800 text-white shadow-sm",
+    success:
+      "bg-emerald-600 text-white shadow-sm focus-visible:ring-emerald-500 dark:focus-visible:ring-emerald-400",
+    error:
+      "bg-rose-600 hover:bg-rose-700 active:bg-rose-800 text-white shadow-sm focus-visible:ring-rose-500 dark:focus-visible:ring-rose-400",
     disabled: "bg-indigo-600/40 text-white/60 cursor-not-allowed",
   };
 
@@ -271,7 +273,7 @@ export const AnimatedSendButton = forwardRef<
         },
       }}
       className={cn(
-        "relative inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl font-medium text-xs transition-colors duration-150 select-none outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-zinc-900 shrink-0",
+        "relative inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl font-medium text-xs transition-colors duration-150 select-none outline-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:focus-visible:ring-indigo-400 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-zinc-900 shrink-0",
         stateClasses[effectiveState],
         className
       )}

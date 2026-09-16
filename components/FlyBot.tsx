@@ -469,10 +469,14 @@ function SearchProductsOutput({
 /**
  * Output Available: checkOrderStatus
  */
-function CheckOrderStatusOutput({ result }: { result: any }) {
+export function CheckOrderStatusOutput({ result }: { result: any }) {
   if (!result.found) {
     return (
-      <div className="p-3.5 rounded-xl bg-amber-50/80 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 text-amber-900 dark:text-amber-200 text-xs shadow-sm flex items-start gap-2.5">
+      <div
+        role="alert"
+        aria-label="Order Not Found"
+        className="p-3.5 rounded-xl bg-amber-50/80 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 text-amber-900 dark:text-amber-200 text-xs shadow-sm flex items-start gap-2.5"
+      >
         <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
         <div>
           <p className="font-semibold text-xs">Order Not Found</p>
@@ -512,15 +516,20 @@ function CheckOrderStatusOutput({ result }: { result: any }) {
   })();
 
   return (
-    <div className="rounded-xl border border-zinc-200/90 dark:border-zinc-700/90 bg-white dark:bg-zinc-900 p-3.5 shadow-sm space-y-3">
+    <div
+      role="region"
+      aria-label={`Order Status ${order.orderId}`}
+      className="rounded-xl border border-zinc-200/90 dark:border-zinc-700/90 bg-white dark:bg-zinc-900 p-3.5 shadow-sm space-y-3"
+    >
       <div className="flex items-center justify-between border-b border-zinc-100 dark:border-zinc-800 pb-2.5">
         <div className="flex items-center gap-2">
           <Package className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-          <span className="font-bold text-xs text-zinc-900 dark:text-zinc-100">
+          <h4 className="font-bold text-xs text-zinc-900 dark:text-zinc-100">
             Order Status ({order.orderId})
-          </span>
+          </h4>
         </div>
         <span
+          aria-label={`Order status: ${statusBadge.label}`}
           className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold border ${statusBadge.className}`}
         >
           {statusBadge.icon}
@@ -547,7 +556,7 @@ function CheckOrderStatusOutput({ result }: { result: any }) {
         <span className="text-[11px] font-semibold text-zinc-500 dark:text-zinc-400 block mb-1">
           Items in Order:
         </span>
-        <ul className="space-y-1">
+        <ul aria-label="Items in order" className="space-y-1">
           {order.items.map((item: string, i: number) => (
             <li
               key={i}
